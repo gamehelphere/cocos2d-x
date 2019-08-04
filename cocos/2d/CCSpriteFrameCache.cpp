@@ -39,6 +39,7 @@ THE SOFTWARE.
 #include "base/CCNS.h"
 #include "base/ccMacros.h"
 #include "base/ccUTF8.h"
+#include "base/ccUtils.h"
 #include "base/CCDirector.h"
 #include "renderer/CCTexture2D.h"
 #include "renderer/CCTextureCache.h"
@@ -75,24 +76,6 @@ bool SpriteFrameCache::init()
 
 SpriteFrameCache::~SpriteFrameCache()
 {
-}
-
-void SpriteFrameCache::parseIntegerList(const std::string &string, std::vector<int> &res)
-{
-    size_t n = std::count(string.begin(), string.end(), ' ');
-    res.resize(n + 1);
-
-    const char *cStr = string.c_str();
-    char *endptr;
-
-    int i = 0;
-    do {
-        long int val = strtol(cStr, &endptr, 10);
-        if (endptr == cStr)
-            return;
-        res[i++] = static_cast<int>(val);
-        cStr = endptr;
-    } while (*endptr != '\0');
 }
 
 void SpriteFrameCache::initializePolygonInfo(const Size &textureSize,
@@ -260,12 +243,10 @@ void SpriteFrameCache::addSpriteFramesWithDictionary(ValueMap& dictionary, Textu
 
             if(frameDict.find("vertices") != frameDict.end())
             {
-                std::vector<int> vertices;
-                parseIntegerList(frameDict["vertices"].asString(), vertices);
-                std::vector<int> verticesUV;
-                parseIntegerList(frameDict["verticesUV"].asString(), verticesUV);
-                std::vector<int> indices;
-                parseIntegerList(frameDict["triangles"].asString(), indices);
+                using cocos2d::utils::parseIntegerList;
+                std::vector<int> vertices = parseIntegerList(frameDict["vertices"].asString());
+                std::vector<int> verticesUV = parseIntegerList(frameDict["verticesUV"].asString());
+                std::vector<int> indices = parseIntegerList(frameDict["triangles"].asString());
 
                 PolygonInfo info;
                 initializePolygonInfo(textureSize, spriteSourceSize, vertices, verticesUV, indices, info);
@@ -362,7 +343,7 @@ void SpriteFrameCache::addSpriteFramesWithFileContent(const std::string& plist_c
 
 void SpriteFrameCache::addSpriteFramesWithFile(const std::string& plist, const std::string& textureFileName)
 {
-    CCASSERT(textureFileName.size()>0, "texture name should not be null");
+    CCASSERT(!textureFileName.empty(), "texture name should not be null");
     const std::string fullPath = FileUtils::getInstance()->fullPathForFilename(plist);
     ValueMap dict = FileUtils::getInstance()->getValueMapFromFile(fullPath);
     addSpriteFramesWithDictionary(dict, textureFileName, plist);
@@ -675,7 +656,7 @@ void SpriteFrameCache::reloadSpriteFramesWithDictionary(ValueMap& dictionary, Te
 
 bool SpriteFrameCache::reloadTexture(const std::string& plist)
 {
-    CCASSERT(plist.size()>0, "plist filename should not be nullptr");
+    CCASSERT(!plist.empty(), "plist filename should not be nullptr");
 
     if (_spriteFramesCache.isPlistUsed(plist)) {
         _spriteFramesCache.erasePlistIndex(plist);
@@ -776,7 +757,7 @@ bool SpriteFrameCache::PlistFramesCache::erasePlistIndex(const std::string &plis
     if (it == _indexPlist2Frames.end()) return false;
 
     auto &frames = it->second;
-    for (auto f : frames)
+    for (const auto& f : frames)
     {
         // !!do not!! call `_spriteFrames.erase(f);` to erase SpriteFrame
         // only erase index here
@@ -803,7 +784,7 @@ bool SpriteFrameCache::PlistFramesCache::hasFrame(const std::string &frame) cons
 bool SpriteFrameCache::PlistFramesCache::isPlistUsed(const std::string &plist) const
 {
     auto frames = _indexPlist2Frames.find(plist);
-    return frames != _indexPlist2Frames.end() && frames->second.size() > 0;
+    return frames != _indexPlist2Frames.end() && !frames->second.empty();
 } 
 
 SpriteFrame * SpriteFrameCache::PlistFramesCache::at(const std::string &frame)
